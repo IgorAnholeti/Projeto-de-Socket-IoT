@@ -1,0 +1,120 @@
+servidor.py (Este código utiliza Threads para não bloquear a execução e um Dicionário para gerir as conexões ativas.)
+
+
+import socket
+import threading
+import json
+import time
+from protocolo import *
+
+# Dicionário para armazenar conexões ativas: { "id_dispositivo": objeto_socket }
+dispositivos_conectados = {}
+
+# Variáveis globais para lógica de estado
+estado_residencia = {
+    "presenca_detectada": False,
+    "ultima_presenca": time.time(),
+    "temperatura_atual": 20.0
+}
+
+def salvar_consumo(id_disp, valor):
+    """Armazena o consumo da tomada num ficheiro de texto."""
+    with open("consumo_energia.txt", "a") as f:
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"[{timestamp}] ID: {id_disp} | Consumo: {valor}W\n")
+
+def enviar_comando(id_destino, comando, valor=None):
+    """Envia uma mensagem JSON para um dispositivo específico se ele estiver online."""
+    if id_destino in dispositivos_conectados:
+        try:
+            sock = dispositivos_conectados[id_destino]
+            msg = json.dumps({"comando": comando, "valor": valor})
+            sock.send(msg.encode('utf-8'))
+        except:
+            print(f"[ERRO] Falha ao enviar comando para {id_destino}")
+    else:
+        print(f"[AVISO] Dispositivo {id_destino} não encontrado/offline.")
+
+def monitorar_regras():
+    """Thread separada para verificar regras de tempo (ex: 10 min sem presença)."""
+    global estado_residencia
+    while True:
+        tempo_sem_ninguem = time.time() - estado_residencia["ultima_presenca"]
+        
+        # Regra 1: Se não há presença há mais de 10 min (simulado aqui como 30s para teste)
+        if estado_residencia["presenca_detectada"] and tempo_sem_ninguem > 600: # 600s = 10min
+            print("[LOGICA] 10 min sem presença. Desligando lâmpadas...")
+            estado_residencia["presenca_detectada"] = False
+            # O ideal seria um loop em todos os IDs de lâmpadas
+            for id_disp, tipo in lista_tipos.items():
+                if tipo == LAMPADA: enviar_comando(id_disp, DESLIGAR)
+        
+        time.sleep(5) # Verifica a cada 5 segundos para poupar CPU
+
+# Dicionário auxiliar para saber o tipo de cada ID conectado
+lista_tipos = {}
+
+def lidar_com_cliente(conn, addr):
+    """Gere a comunicação individual de cada dispositivo conectado."""
+    id_dispositivo = None
+    try:
+        while True:
+            data = conn.recv(1024).decode('utf-8')
+            if not data: break
+            
+            msg = json.loads(data)
+            id_dispositivo = msg['id']
+            tipo = msg['tipo']
+            valor = msg.get('valor')
+
+            # Registo inicial do dispositivo
+            if id_dispositivo not in dispositivos_conectados:
+                dispositivos_conectados[id_dispositivo] = conn
+                lista_tipos[id_dispositivo] = tipo
+                print(f"[CONEXÃO] {tipo.upper()} ID:{id_dispositivo} conectado.")
+
+            # --- PROCESSAMENTO DA LÓGICA POR TIPO ---
+            
+            if tipo == SENSOR_PRESENCA:
+                if valor == "1":
+                    estado_residencia["presenca_detectada"] = True
+                    estado_residencia["ultima_presenca"] = time.time()
+                    print(f"[EVENTO] Presença em {id_dispositivo}! Ligar lâmpadas.")
+                    # Lógica: Se detectar alguém, liga as lâmpadas
+                    for d_id, d_tipo in lista_tipos.items():
+                        if d_tipo == LAMPADA: enviar_comando(d_id, LIGAR)
+
+            elif tipo == TERMOMETRO:
+                temp = float(valor)
+                estado_residencia["temperatura_atual"] = temp
+                print(f"[TELEMETRIA] {id_dispositivo}: {temp}°C")
+                if temp > 28:
+                    print("[LOGICA] Temperatura > 28°C. Ligando Ar Condicionados...")
+                    for d_id, d_tipo in lista_tipos.items():
+                        if d_tipo == AR_CONDICIONADO: enviar_comando(d_id, LIGAR, 22)
+
+            elif tipo == TOMADA:
+                print(f"[TELEMETRIA] {id_dispositivo} consumindo {valor}W")
+                salvar_consumo(id_dispositivo, valor)
+
+    except Exception as e:
+        print(f"[ERRO] Conexão com {id_dispositivo} perdida: {e}")
+    finally:
+        if id_dispositivo in dispositivos_conectados:
+            del dispositivos_conectados[id_dispositivo]
+            del lista_tipos[id_dispositivo]
+        conn.close()
+
+# --- SETUP DO SERVIDOR ---
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((IP_SERVIDOR, PORTA))
+server.listen()
+
+# Inicia a thread de monitoramento de regras temporais
+threading.Thread(target=monitorar_regras, daemon=True).start()
+
+print(f"[*] Servidor iniciado em {IP_SERVIDOR}:{PORTA}")
+while True:
+    conn, addr = server.accept()
+    thread = threading.Thread(target=lidar_com_cliente, args=(conn, addr))
+    thread.start()

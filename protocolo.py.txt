@@ -1,0 +1,18 @@
+protocolo.py (Este ficheiro evita erros de digitação e garante que todos os clientes falem a mesma língua.)
+
+# Constantes de rede
+IP_SERVIDOR = '127.0.0.1'
+PORTA = 5000
+
+# Tipos de Dispositivos (IDs de Categoria)
+LAMPADA = "lampada"
+TOMADA = "tomada"
+SENSOR_PRESENCA = "sensor_presenca"
+AR_CONDICIONADO = "ar_condicionado"
+TERMOMETRO = "termometro"
+
+# Comandos/Ações
+LIGAR = "LIGAR"
+DESLIGAR = "DESLIGAR"
+SET_TEMP = "SET_TEMP"
+DADOS = "DADOS" # Envio de leituras (temp, consumo, presença)

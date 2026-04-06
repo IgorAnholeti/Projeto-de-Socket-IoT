@@ -1,0 +1,103 @@
+Sou estudante de curso técnico em Redes de Computadores/programação e tenho um desafio para concluir. Ajude-me com a programação deste sistema e por consequência me gere conhecimento conceituando suas sugestões e sendo bem explicativo, além de só solucionar.
+
+Discorra sobre o texto abaixo, contém além de conteúdo sobre a atividade, sobre o que já pensei sobre.
+
+
+# ATIVIDADE DE REDES E PROTOCOLOS
+
+Preciso desenvolver programação em python utilizando os recursos de socket e tcp/ip para criar um protocolo que controle dispositivos inteligentes em ambientes residenciais, tais como: Lâmpadas, tomadas, sensores de presença, ar condicionado e termômetro. Neste contexto, cada dispositivo simulado será considerado como um cliente de uma arquitetura cliente/servidor e irá se comunicar com o servidor central que controla todos os dispositivos da ''residência'', conforme suas funções, descritas abaixo:
+
+1. Lâmpadas: São ligadas e desligadas remotamente via mensagens enviadas pelo servidor. Sempre que os sensores de presença detectam pessoas, as lâmpadas são acesas. Quanto o servidor “percebe” que não há pessoas no ambiente há mais de 10 minutos, as lâmpadas são desligadas.
+2. Tomadas: Medem a corrente elétrica que passam por elas e enviam um relatório de 2 em 2 minutos, com o consumo. O servidor armazena o consumo em uma base de dados (arquivo texto definido pelo aluno).
+3. Sensores de presença: informam para o servidor a presença de pessoas nos ambientes para que seja tomada alguma ação.
+4. Ar condicionados: são ligados e desligados remotamente via mensagem enviada pelo servidor. Ao ligar um ar condicionado, o servidor define a temperatura desejada para 22º C. Sempre que os termômetros (sensores de temperatura) indicarem que o ambiente está acima de 28º C, os aparelhos de ar condicionados dos ambientes que estão acima de 28º C são ligados.
+5. Termômetros: informam para o servidor a temperatura do ambiente para que seja tomada alguma ação.
+
+Os objetivos específicos do trabalho são:
+◦ Familiarizar-se com a programação utilizando a API socket.
+◦ Manipular protocolo TCP.
+◦ Implementar um protocolo controlar um ambiente de dispositivos inteligentes para
+residências (smart home devices).
+◦ Enviar e receber dados em uma aplicação que utiliza a arquitetura Cliente/Servidor.
+
+*O QUE EU PENSEI SOBRE O FUNCIONAMENTO BÁSICO*
+
+Até então pensei no fluxo da lógica na seguinte maneira:
+
+1- O servidor e os dispositivos são inicializados e inicializam uma conexão com o servidor que estará
+executando um IP e porta TCP padrão definidos.
+2- Após conectar com o servidor, o dispositivo irá informar o seu tipo (lâmpadas, tomadas, sensores de presença, ar condicionados, termômetros). Nesta etapa inicia os comandos de controle.
+
+- NA PRÁTICA:
+◦ Após iniciar, tanto o servidor quanto o cliente irão entrar em modo de operação executando ações de acordo com os eventos ocorridos
+◦ Para simular mudanças de temperatura, por exemplo o usuário poderá fornecer uma temperatura via teclado, no console do cliente de termômetro.
+◦ Para simular presença de pessoas, por exemplo o usuário poderá fornecer o valor 1 para via teclado,
+no console do cliente de sensor de presença.
+◦ Para simular o estado de uma lâmpada, será impresso as palavras “ligada” ou “desligada”, no
+console do cliente lâmpada.
+◦ Para simular o estado do ar condicionado, será impresso as frases “ligado com
+temperatura n graus” ou “desligado”, no console do cliente ar condicionado.
+◦ Para simular um consumo, o dispositivo tomada irá gerar um dado aleatório de 2 em 2
+minutos e enviar para o servidor.
+
+- SOBRE AS MENSAGENS:
+
+Cada aluno está responsável por pensar no formato das mensagens que serão utilizadas
+pelo protocolo e nos campos necessários. No entanto, cada mensagem deverá ter no mínimo os campos listados abaixo:
+◦ ID do dispositivo
+◦ Mensagem de controle
+
+
+============================================================================================
+# ESTRUTURA DOS FICHEIROS
+
+config.y ou protocolo.py = para guardar as constantes (como o IP do servidor e a Porta) e importá-lo em todos os outros. Assim, se mudares a porta, mudas apenas num sítio.
+
+servidor.py = Deve conter o socket principal (bind, listen), a gestão de threads para múltiplos clientes e a lógica de negócio (ex: se sensor X diz "movimento", enviar "ligar" para lâmpada Y)(fica à espera) — ele recebe uma leitura de um sensor e decide qual comando enviar para um atuador.
+
+Ficheiros separados dos dispositivos:
+cliente_lampada.py (conecta e fica a ouvir comandos)
+cliente_termostato.py (envia sinal de "pessoa detectada")
+....
+
+============================================================================================
+
+# SUGESTÃO SOBRE A ESTRUTURA DE MENSAGENS
+Exemplo: 
+json
+{
+  "id": "sala_luz_01",
+  "tipo": "lampada",
+  "comando": "status_update",
+  "valor": "ON"
+}
+
+# ARQUITETURA DO SERVIDOR
+
+O servidor precisa lidar com múltiplos dispositivos simultaneamente. Se ele ficar "preso" esperando a resposta de uma lâmpada, o termômetro não conseguirá enviar dados. Por isso, usaremos Threads.
+Conceito Chave:
+Socket: A "porta" de comunicação (IP + Porta).
+Listen/Accept: O servidor fica ouvindo; quando um cliente conecta, o accept cria um novo socket exclusivo para aquela conversa.
+Threading: Cada nova conexão é enviada para uma thread separada, permitindo concorrência.
+
+============================================================================================
+
+# CONCEITOS PARA O SISTEMA
+
+Diferença entre Atuador e Sensor:
+Sensores (Termômetro, Presença, Tomada): Enviam dados para o servidor via socket.send().
+
+Atuadores (Lâmpada, AC): Precisam ficar em um loop conn.recv() esperando ordens do servidor.
+
+O Problema dos 10 Minutos (Lâmpada): No servidor precisará de  uma thread de monitoramento que checa o timestamp da última presença. Se time.time() - ultima_presenca > 600, ele envia o comando "desligar" para a lâmpada.
+
+Identificação: No dicionário de conexões no servidor, precisamos mapear o ID do dispositivo para o objeto conn. Assim, quando o termômetro avisar que está quente, o servidor sabe exatamente através de qual conexão falar com o Ar Condicionado.
+
+Focar em tratar erros de conexão (try/except). Em redes, a conexão cai o tempo todo; seu protocolo deve ser robusto para reconectar.
+
+Conceitos aplicados para o teu conhecimento:
+json.loads e json.dumps: Transformamos dicionários Python em strings para viajar na rede e vice-versa. É o padrão de facto para APIs modernas.
+threading.Thread: O servidor precisa de "fazer várias coisas ao mesmo tempo". Uma thread aceita novas conexões, outra gere cada cliente individual e a monitorar_regras fica a contar o tempo em background.
+daemon=True: Significa que quando o programa principal fechar, esta thread morre junto, não deixando processos "zumbis".
+Estado da Residência: Repara que o servidor é o único que sabe o estado global. O termómetro não sabe da existência do ar condicionado; ele apenas reporta. O servidor é que possui a tabela de roteamento (dispositivos_conectados) para saber para quem mandar o comando.
+
