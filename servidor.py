@@ -1,3 +1,4 @@
+(Este código utiliza Threads para não bloquear a execução e um Dicionário para gerir as conexões ativas.)
 import socket
 import threading
 import json
