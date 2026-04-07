@@ -6,7 +6,6 @@ from protocolo import *
 
 # ==============================
 # ESTRUTURAS GLOBAIS
-# ==============================
 
 # { "id_dispositivo": socket }
 dispositivos_conectados = {}
@@ -23,17 +22,13 @@ estado_residencia = {
     "ultima_presenca": time.time(),
     "temperatura_atual": 0.0
 }
-
 # ==============================
 # FUNÇÕES AUXILIARES
-# ==============================
-
 def salvar_consumo(id_disp, valor):
     """Armazena o consumo da tomada em arquivo."""
     with open("consumo_energia.txt", "a") as f:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         f.write(f"[{timestamp}] ID: {id_disp} | Consumo: {valor}W\n")
-
 
 def enviar_comando(id_destino, comando, valor=None):
     """Envia comando para um dispositivo específico."""
@@ -67,7 +62,6 @@ def remover_dispositivo(id_disp):
         dispositivos_conectados.pop(id_disp, None)
         lista_tipos.pop(id_disp, None)
 
-
 # ==============================
 # THREAD DE REGRAS DE NEGÓCIO
 def monitorar_regras():
@@ -99,10 +93,8 @@ def monitorar_regras():
 
         time.sleep(5) # Verificação a cada 5s é eficiente
         
-# ==============================
 # INTERFACE DE USUÁRIO (MENU)
 # ==============================
-
 def interface_usuario():
     while True:
         print("\n===== MENU =====")
@@ -152,9 +144,7 @@ def interface_usuario():
             print("Opção inválida.")     
         
         time.sleep(0.5)   
-
-
-# ==============================
+        
 # THREAD DE CADA CLIENTE
 # ==============================
 
