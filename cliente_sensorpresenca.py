@@ -4,23 +4,29 @@ from protocolo import *
 
 # ==============================
 # CONFIGURAÇÃO DO DISPOSITIVO
-# ==============================
-
 ID_DISPOSITIVO = "sensor_sala_01"
 
 # ==============================
 # CONEXÃO COM SERVIDOR
-# ==============================
-
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((IP_SERVIDOR, PORTA))
 
 print(f"[CONECTADO] {ID_DISPOSITIVO}")
 
 # ==============================
-# ENVIO DE REGISTRO
-# ==============================
+# NOVA FUNÇÃO: ESCUTAR (Colocamos aqui antes de usar)
+def ouvir_servidor():
+    while True:
+        try:
+            data = sock.recv(1024).decode('utf-8')
+            if not data:
+                break
+            print(f"\n[MENSAGEM DO SERVIDOR]: {data.strip()}")
+        except:
+            break
 
+# ==============================
+# ENVIO DE REGISTRO
 mensagem_registro = json.dumps({
     CAMPO_MSG: MSG_REGISTRO,
     CAMPO_ID: ID_DISPOSITIVO,
@@ -29,10 +35,12 @@ mensagem_registro = json.dumps({
 
 sock.send((mensagem_registro + DELIMITADOR).encode('utf-8'))
 
+# INICIAR A THREAD DE ESCUTA (Importante: antes do loop de input)
+# ==============================
+threading.Thread(target=ouvir_servidor, daemon=True).start()
+
 # ==============================
 # LOOP DE SIMULAÇÃO
-# ==============================
-
 while True:
     try:
         print("\n===== SENSOR DE PRESENÇA =====")
@@ -52,8 +60,6 @@ while True:
 
         # ==============================
         # ENVIO DE DADOS
-        # ==============================
-
         mensagem = json.dumps({
             CAMPO_MSG: MSG_DADOS,
             CAMPO_ID: ID_DISPOSITIVO,
