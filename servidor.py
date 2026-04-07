@@ -1,3 +1,4 @@
+
 (Este código utiliza Threads para não bloquear a execução e um Dicionário para gerir as conexões ativas.)
 import socket
 import threading
@@ -83,13 +84,13 @@ def monitorar_regras():
         # Regra: 10 minutos sem presença
         if presenca and tempo_sem_ninguem > 600:
             print("[LOGICA] 10 min sem presença. Desligando lâmpadas...")
-            
+               
             with lock:
                 estado_residencia["presenca_detectada"] = False
-                # Filtra apenas IDs do tipo lampada
-                lampadas = [id_d for id_d, tipo in lista_tipos.items() if tipo == TIPO_LAMPADA]
+                # Filtra apenas IDs do tipo lampada e ar condicionado
+                dispositivos_para_desligar = [id_d for id_d, tipo in lista_tipos.items() if tipo in [TIPO_LAMPADA, TIPO_AR_CONDICIONADO]]
 
-            for id_disp in lampadas:
+            for id_disp in dispositivos_para_desligar: # Desliga os dispositivos
                 enviar_comando(id_disp, CMD_DESLIGAR)
 
         time.sleep(5) # Verificação a cada 5s é eficiente
@@ -211,11 +212,16 @@ def lidar_com_cliente(conn, addr):
 
                         print(f"[TEMP] {id_dispositivo}: {temp}°C")
 
-                        if temp > 28:
+                        if temp > 27: # Liga o arcondicionado se estiver maior 27º
                             print("[LOGICA] Temperatura alta. Ligando ar condicionado...")
                             # 2. Envia os comandos (SEM LOCK)
                             for d_id in ar_condicionados:
                                 enviar_comando(d_id, CMD_LIGAR, 22)
+                                
+                        elif temp < 20:  # Desliga se ficar abaixo de 20º
+                            print("[LOGICA] Temperatura agradável. Desligando ACs...")
+                            for d_id in ar_condicionados:
+                                enviar_comando(d_id, CMD_DESLIGAR)
                                 
                     # TOMADA (Não precisa de lock para gravar ficheiro)
                     elif tipo == TIPO_TOMADA:
