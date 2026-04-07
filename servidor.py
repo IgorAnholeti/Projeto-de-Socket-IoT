@@ -245,22 +245,42 @@ def lidar_com_cliente(conn, addr):
 # Loop principal
 def aceitar_conexoes():
     while True:
-        conn, addr = server.accept()
-
-        thread = threading.Thread(
+        try:
+            conn, addr = server.accept()
+            
+            thread = threading.Thread(
             target=lidar_com_cliente,
             args=(conn, addr),
-            daemon=True
+            daemon=True # O daemon=True garante que a thread morra se o programa principal fechar
         )
-        thread.start()
-
+            thread.start()
+        except Exception as e:
+            print(f"[ERRO] falha ao aceitar conexão: {e}")
+            break
+        
+        
+# Configuração do Socket com melhoria de reutilização
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 server.bind((IP_SERVIDOR, PORTA))
 server.listen()
 
 print(f"[*] Servidor iniciado em {IP_SERVIDOR}:{PORTA}")
 
-# Thread de regras
-threading.Thread(target=monitorar_regras, daemon=True).start()
-threading.Thread(target=aceitar_conexoes, daemon=True).start()
-interface_usuario()
+# Thread de regras - lançamento das threads de suporte
+t_regras = threading.Thread(target=monitorar_regras, daemon=True).start()
+t_conexoes = threading.Thread(target=aceitar_conexoes, daemon=True).start()
+t_regras.start()
+t_conexoes.start()
+
+# A interface_usuario() roda na thread principal. 
+# Quando ela retornar (Opção 5), o programa termina e os daemons fecham.
+try:
+    interface_usuario()
+except KeyboardInterrupt:
+    print("\n[DESLIGANDO] Servidor interrompido pelo utilizador.")
+finally:
+    server.close()
+    print("[FECHADO] Servidor encerrado.")
+
+
